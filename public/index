@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garage Tracker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f4f3ef;--surface:#fff;--surface2:#eeede8;
+  --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.18);
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --accent:#1a1a18;
+  --green-bg:#eaf3de;--green-text:#27500a;--green-border:#3b6d11;
+  --amber-bg:#faeeda;--amber-text:#633806;--amber-border:#854f0b;
+  --red-bg:#fcebeb;--red-text:#501313;--red-border:#a32d2d;
+  --blue-bg:#e6f1fb;--blue-text:#042c53;--blue-border:#185fa5;
+  --radius:12px;--radius-sm:8px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#181816;--surface:#242422;--surface2:#2e2e2b;
+  --border:rgba(255,255,255,0.10);--border2:rgba(255,255,255,0.20);
+  --text:#f1efe8;--text2:#b4b2a9;--text3:#888780;
+  --green-bg:#173404;--green-text:#c0dd97;--green-border:#3b6d11;
+  --amber-bg:#412402;--amber-text:#fac775;--amber-border:#854f0b;
+  --red-bg:#501313;--red-text:#f7c1c1;--red-border:#a32d2d;
+  --blue-bg:#042c53;--blue-text:#b5d4f4;--blue-border:#185fa5;
+}}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;}
+
+/* ── Auth pages ── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.auth-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:2rem;width:100%;max-width:400px;}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:2rem;}
+.auth-logo-icon{width:44px;height:44px;background:#f5c842;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.auth-logo-title{font-size:22px;font-weight:700;}
+.auth-logo-sub{font-size:13px;color:var(--text3);}
+.auth-card h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;}
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem;}
+label{font-size:14px;font-weight:500;color:var(--text2);}
+input[type=text],input[type=email],input[type=password],input[type=date],input[type=number]{
+  padding:10px 14px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text);font-size:15px;font-family:inherit;
+  outline:none;transition:border-color 0.15s;width:100%;
+}
+input:focus{border-color:#534ab7;box-shadow:0 0 0 3px rgba(83,74,183,0.12);}
+.btn{padding:10px 20px;border-radius:var(--radius-sm);font-size:15px;font-weight:500;cursor:pointer;border:0.5px solid var(--border2);background:var(--surface);color:var(--text);transition:background 0.15s;font-family:inherit;}
+.btn:hover{background:var(--surface2);}
+.btn-primary{background:var(--text);color:var(--surface);border-color:var(--text);}
+.btn-primary:hover{opacity:0.85;}
+.btn-danger{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border);}
+.btn-full{width:100%;margin-top:0.5rem;}
+.auth-error{background:var(--red-bg);color:var(--red-text);border:0.5px solid var(--red-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;margin-top:0.75rem;display:none;}
+
+/* ── App shell ── */
+#app{display:none;}
+header{background:#000;color:#fff;padding:1rem 2rem;display:flex;align-items:center;gap:1rem;}
+.header-logo{display:flex;align-items:center;gap:12px;}
+.header-icon{width:38px;height:38px;background:#f5c842;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.header-title{font-size:22px;font-weight:700;color:#fff;}
+.header-sub{font-size:12px;opacity:0.55;color:#fff;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.user-badge{font-size:13px;color:rgba(255,255,255,0.7);}
+#dark-toggle{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;}
+.tabs-wrap{padding:0 2rem;}
+@media(max-width:700px){.tabs-wrap{padding:0 1rem;}header{padding:1rem;}}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:2rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:10px 16px;font-size:14px;white-space:nowrap;font-weight:500;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;font-family:inherit;}
+.tab.active{color:var(--text);border-bottom-color:var(--text);}
+.tab:hover:not(.active){color:var(--text);}
+.panel{display:none;}.panel.active{display:block;}
+.panel-wrap{padding:0 2rem;}
+@media(max-width:700px){.panel-wrap{padding:0 1rem;}}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;}
+@media(min-width:1400px){.card-grid{grid-template-columns:repeat(auto-fill,minmax(380px,1fr));}}
+.vehicle-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.vehicle-card-header{padding:1.25rem 1.5rem 1rem;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+@font-face{font-family:'UKPlate';src:url('https://cdn.jsdelivr.net/gh/TexelFR/CharlesWright@main/CharlesWright-Bold.woff2') format('woff2');font-weight:bold;}
+.vrm{font-family:'UKPlate','Arial Black',sans-serif;font-size:20px;font-weight:900;letter-spacing:0.08em;background:#f5c842;color:#000;padding:5px 12px 4px;border-radius:4px;display:inline-block;border:2px solid #d4a800;text-transform:uppercase;line-height:1.2;position:relative;}
+.vrm::before{content:'';position:absolute;left:0;top:0;bottom:0;width:24px;background:#003399;border-radius:2px 0 0 2px;}
+.vrm-text{position:relative;padding-left:16px;}
+.vrm-input{font-family:'Courier New',monospace;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+.vehicle-name{font-size:13px;color:var(--text2);margin-top:4px;}
+.card-actions{display:flex;gap:6px;flex-shrink:0;}
+.btn-icon{width:30px;height:30px;border-radius:var(--radius-sm);border:0.5px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.btn-icon:hover{background:var(--border);color:var(--text);}
+.status-strips{border-top:0.5px solid var(--border);padding:0.875rem 1.5rem;display:flex;flex-direction:column;gap:8px;}
+.status-row{display:flex;align-items:center;justify-content:space-between;font-size:14px;}
+.status-label{color:var(--text2);font-weight:500;}
+.status-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:0.5px solid;white-space:nowrap;}
+.badge-ok{background:var(--green-bg);color:var(--green-text);border-color:var(--green-border);}
+.badge-soon{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-border);}
+.badge-expired{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border);}
+.badge-unknown{background:var(--surface2);color:var(--text3);border-color:var(--border2);}
+.badge-pass{background:var(--green-bg);color:var(--green-text);border-color:var(--green-border);}
+.badge-fail{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border);}
+.days-text{font-size:12px;color:var(--text3);}
+.mot-test{border:0.5px solid var(--border);border-radius:var(--radius-sm);margin-top:6px;overflow:hidden;}
+.mot-test-header{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;list-style:none;}
+.mot-test-header::-webkit-details-marker{display:none;}
+.mot-test-header:hover{background:var(--surface2);}
+.mot-item{font-size:12px;padding:5px 9px;border-radius:4px;margin:0 8px 4px;border-left:3px solid;line-height:1.5;}
+.mot-item.advisory{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber-text);}
+.mot-item.fail-item{background:var(--red-bg);border-color:var(--red-border);color:var(--red-text);}
+.mot-item-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-right:5px;}
+.mot-tag{font-size:11px;border-radius:10px;padding:1px 7px;border:0.5px solid;white-space:nowrap;}
+.mot-tag.fail{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border);}
+.mot-tag.advisory{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-border);}
+.loading-bar{text-align:center;padding:3rem;color:var(--text3);font-size:15px;}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);}
+.success-msg{background:var(--green-bg);color:var(--green-text);border:0.5px solid var(--green-border);border-radius:var(--radius-sm);padding:6px 10px;font-size:13px;margin-top:0.75rem;display:none;}
+.error-msg{background:var(--red-bg);color:var(--red-text);border:0.5px solid var(--red-border);border-radius:var(--radius-sm);padding:6px 10px;font-size:13px;margin-top:0.75rem;display:none;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr;}}
+.form-group.full{grid-column:1/-1;}
+.settings-section{margin-bottom:2rem;max-width:560px;}
+.settings-section h3{font-size:16px;font-weight:600;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:0.5px solid var(--border);}
+.info-box{background:var(--blue-bg);border:0.5px solid var(--blue-border);border-radius:var(--radius-sm);padding:0.75rem 1rem;font-size:14px;color:var(--blue-text);margin-bottom:1rem;line-height:1.6;}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;padding:1rem;}
+.modal-box{background:var(--surface);border-radius:var(--radius);padding:1.5rem;max-width:480px;width:100%;border:0.5px solid var(--border);}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1.25rem;}
+</style>
+</head>
+<body>
+
+<!-- ── Login page ── -->
+<div id="login-page" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+          <path d="M5 11L6.5 6.5H17.5L19 11" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="3" y="11" width="18" height="7" rx="1.5" stroke="#1a1a18" stroke-width="1.5"/>
+          <circle cx="7.5" cy="18" r="1.5" fill="#1a1a18"/>
+          <circle cx="16.5" cy="18" r="1.5" fill="#1a1a18"/>
+          <path d="M3 14h18" stroke="#1a1a18" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="auth-logo-title">Garage Tracker</div>
+        <div class="auth-logo-sub">MOT &amp; tax monitor</div>
+      </div>
+    </div>
+    <h2>Sign in</h2>
+    <div class="form-group">
+      <label>Email address</label>
+      <input type="email" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign in</button>
+    <div class="auth-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ── Main app ── -->
+<div id="app">
+  <header>
+    <div class="header-logo">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+          <path d="M5 11L6.5 6.5H17.5L19 11" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="3" y="11" width="18" height="7" rx="1.5" stroke="#1a1a18" stroke-width="1.5"/>
+          <circle cx="7.5" cy="18" r="1.5" fill="#1a1a18"/>
+          <circle cx="16.5" cy="18" r="1.5" fill="#1a1a18"/>
+          <path d="M3 14h18" stroke="#1a1a18" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">Garage Tracker</div>
+        <div class="header-sub">MOT &amp; tax monitor</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="user-badge" id="user-badge"></span>
+      <button id="dark-toggle" onclick="toggleDark()">☀️ Light</button>
+      <button class="btn" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:#fff;font-size:12px;padding:6px 12px;" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('garage')">My Garage</button>
+      <button class="tab" onclick="switchTab('mot')">MOT History</button>
+      <button class="tab" onclick="switchTab('lookup')">🔍 Lookup</button>
+      <button class="tab" onclick="switchTab('account')">Account</button>
+      <button class="tab admin-only" onclick="switchTab('admin')" style="display:none;">⚙️ Admin</button>
+    </div>
+  </div>
+
+  <div class="panel-wrap">
+
+    <!-- MY GARAGE -->
+    <div id="tab-garage" class="panel active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+        <span style="color:var(--text2);font-size:13px;" id="vehicle-count"></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" onclick="refreshAllDvla()">↻ Refresh DVLA</button>
+          <button class="btn btn-primary" onclick="openAddModal()">+ Add vehicle</button>
+        </div>
+      </div>
+      <div class="card-grid" id="vehicle-cards"><div class="loading-bar">Loading your garage…</div></div>
+    </div>
+
+    <!-- MOT HISTORY -->
+    <div id="tab-mot" class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px;">
+        <span style="color:var(--text2);font-size:13px;" id="mot-count"></span>
+        <button class="btn" onclick="refreshAllMot()">↻ Refresh all MOT history</button>
+      </div>
+      <div id="mot-panels"></div>
+    </div>
+
+    <!-- LOOKUP -->
+    <div id="tab-lookup" class="panel">
+      <div style="max-width:720px;margin:0 auto;">
+        <div class="card" style="margin-bottom:1.5rem;">
+          <h3 style="font-size:15px;font-weight:600;margin-bottom:1rem;">Instant vehicle lookup</h3>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input class="vrm-input" type="text" id="lookup-vrm" placeholder="e.g. AB12CDE" maxlength="8" style="flex:1;min-width:120px;" onkeydown="if(event.key==='Enter')doLookup()">
+            <button class="btn btn-primary" onclick="doLookup()" id="lookup-btn">Search</button>
+          </div>
+          <div id="lookup-error" class="error-msg"></div>
+        </div>
+        <div id="lookup-loading" style="display:none;" class="loading-bar">Looking up vehicle…</div>
+        <div id="lookup-result" style="display:none;">
+          <div class="card" style="margin-bottom:1.5rem;" id="lookup-dvla-card"></div>
+          <div class="card" id="lookup-mot-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCOUNT -->
+    <div id="tab-account" class="panel">
+      <div style="max-width:560px;">
+        <div class="settings-section">
+          <h3>Profile</h3>
+          <div class="form-group"><label>Name</label><input type="text" id="acc-name"></div>
+          <div class="form-group"><label>Email (login)</label><input type="email" id="acc-email" disabled style="opacity:0.6;"></div>
+          <div class="form-group"><label>Notification email</label><input type="email" id="acc-notify" placeholder="Where to send alerts"></div>
+          <button class="btn btn-primary" onclick="saveProfile()">Save changes</button>
+          <div class="success-msg" id="profile-success">Saved!</div>
+          <div class="error-msg" id="profile-error"></div>
+        </div>
+        <div class="settings-section">
+          <h3>Change password</h3>
+          <div class="form-group"><label>Current password</label><input type="password" id="pw-current"></div>
+          <div class="form-group"><label>New password</label><input type="password" id="pw-new"></div>
+          <div class="form-group"><label>Confirm new password</label><input type="password" id="pw-confirm"></div>
+          <button class="btn btn-primary" onclick="changePassword()">Update password</button>
+          <div class="success-msg" id="pw-success">Password updated!</div>
+          <div class="error-msg" id="pw-error"></div>
+        </div>
+        <div class="settings-section">
+          <h3>Email notifications</h3>
+          <div class="info-box">Alerts are sent to your notification email at 9am daily for MOT, tax, insurance and service reminders at 30, 7 and 1 day before expiry. You'll also get instant alerts for MOT pass/fail and V5C changes.</div>
+          <button class="btn" onclick="sendTestEmail()">Send test email</button>
+          <div class="success-msg" id="test-success"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="tab-admin" class="panel">
+      <div style="max-width:720px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h3 style="font-size:16px;font-weight:600;">User accounts</h3>
+          <button class="btn btn-primary" onclick="openNewUserModal()">+ Add user</button>
+        </div>
+        <div id="user-list"></div>
+      </div>
+    </div>
+
+  </div><!-- end panel-wrap -->
+</div><!-- end app -->
+
+<!-- Add vehicle modal -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal-box">
+    <div class="modal-title">Add a vehicle</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Registration number</label><input class="vrm-input" type="text" id="add-vrm" placeholder="e.g. AB12CDE" maxlength="8"></div>
+      <div class="form-group full"><label>Nickname (optional)</label><input type="text" id="add-name" placeholder="e.g. Dad's Mondeo"></div>
+      <div class="form-group"><label>Insurance expiry</label><input type="date" id="add-insurance"></div>
+      <div class="form-group"><label>Insurance provider</label><input type="text" id="add-insurer" placeholder="e.g. Admiral"></div>
+      <div class="form-group full"><label>Last service date</label><input type="date" id="add-serviced"></div>
+    </div>
+    <div style="margin-top:1.25rem;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="addVehicle()">Add vehicle</button>
+      <button class="btn" onclick="closeAddModal()">Cancel</button>
+    </div>
+    <div class="success-msg" id="add-success">Vehicle added!</div>
+    <div class="error-msg" id="add-error"></div>
+  </div>
+</div>
+
+<!-- Edit vehicle modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <div class="modal-title">Edit vehicle</div>
+    <input type="hidden" id="edit-vrm-orig">
+    <div class="form-grid">
+      <div class="form-group full"><label>Nickname</label><input type="text" id="edit-name"></div>
+      <div class="form-group"><label>Insurance expiry</label><input type="date" id="edit-insurance"></div>
+      <div class="form-group"><label>Insurance provider</label><input type="text" id="edit-insurer"></div>
+      <div class="form-group full"><label>Last service date</label><input type="date" id="edit-serviced"></div>
+    </div>
+    <div style="margin-top:1.25rem;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="saveEdit()">Save</button>
+      <button class="btn" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- New user modal (admin) -->
+<div class="modal-overlay" id="new-user-modal">
+  <div class="modal-box">
+    <div class="modal-title">Add user account</div>
+    <div class="form-group"><label>Name</label><input type="text" id="nu-name" placeholder="Full name"></div>
+    <div class="form-group"><label>Email address</label><input type="email" id="nu-email" placeholder="user@example.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="nu-password" placeholder="Temporary password"></div>
+    <div class="form-group"><label>Notification email (optional)</label><input type="email" id="nu-notify" placeholder="Same as login email if blank"></div>
+    <div style="margin-top:1.25rem;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="createUser()">Create account</button>
+      <button class="btn" onclick="closeNewUserModal()">Cancel</button>
+    </div>
+    <div class="success-msg" id="nu-success"></div>
+    <div class="error-msg" id="nu-error"></div>
+  </div>
+</div>
+
+<script>
+let vehicles = [], currentUser = null;
+
+// ── Dark mode ──────────────────────────────────────────────────────────────────
+function applyTheme(dark) {
+  const r = document.documentElement;
+  const props = dark
+    ? {'--bg':'#181816','--surface':'#242422','--surface2':'#2e2e2b','--border':'rgba(255,255,255,0.10)','--border2':'rgba(255,255,255,0.20)','--text':'#f1efe8','--text2':'#b4b2a9','--text3':'#888780','--green-bg':'#173404','--green-text':'#c0dd97','--green-border':'#3b6d11','--amber-bg':'#412402','--amber-text':'#fac775','--amber-border':'#854f0b','--red-bg':'#501313','--red-text':'#f7c1c1','--red-border':'#a32d2d','--blue-bg':'#042c53','--blue-text':'#b5d4f4','--blue-border':'#185fa5'}
+    : {'--bg':'#f4f3ef','--surface':'#fff','--surface2':'#eeede8','--border':'rgba(0,0,0,0.10)','--border2':'rgba(0,0,0,0.18)','--text':'#1a1a18','--text2':'#5f5e5a','--text3':'#888780','--green-bg':'#eaf3de','--green-text':'#27500a','--green-border':'#3b6d11','--amber-bg':'#faeeda','--amber-text':'#633806','--amber-border':'#854f0b','--red-bg':'#fcebeb','--red-text':'#501313','--red-border':'#a32d2d','--blue-bg':'#e6f1fb','--blue-text':'#042c53','--blue-border':'#185fa5'};
+  for(const[k,v] of Object.entries(props)) r.style.setProperty(k,v);
+  document.body.style.background = dark ? '#181816' : '#f4f3ef';
+  const btn = document.getElementById('dark-toggle');
+  if(btn){btn.textContent = dark ? '🌙 Dark' : '☀️ Light';}
+  localStorage.setItem('gt_dark', dark ? '1' : '0');
+}
+function toggleDark(){
+  const isDark = document.getElementById('dark-toggle')?.textContent.includes('Dark');
+  applyTheme(!isDark);
+}
+(function(){const s=localStorage.getItem('gt_dark');if(s==='1')applyTheme(true);else if(s===null&&window.matchMedia('(prefers-color-scheme:dark)').matches)applyTheme(true);})();
+
+// ── Auth ───────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!email || !password) { err.textContent = 'Please enter email and password'; err.style.display='block'; return; }
+  try {
+    const res = await fetch('/api/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Login failed'; err.style.display='block'; return; }
+    currentUser = data.user;
+    showApp();
+  } catch(e) { err.textContent = 'Network error'; err.style.display='block'; }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', {method:'POST'});
+  currentUser = null;
+  vehicles = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.ok) { currentUser = await res.json(); showApp(); }
+    else { document.getElementById('login-page').style.display = 'flex'; }
+  } catch(e) { document.getElementById('login-page').style.display = 'flex'; }
+}
+
+function showApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-badge').textContent = currentUser.name || currentUser.email;
+  document.getElementById('acc-name').value = currentUser.name || '';
+  document.getElementById('acc-email').value = currentUser.email;
+  document.getElementById('acc-notify').value = currentUser.notify_email || '';
+  if (currentUser.is_admin) {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+  }
+  loadVehicles();
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(name) {
+  const names = ['garage','mot','lookup','account','admin'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i]===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if (name==='mot') { renderMotTab(); autoLoadMot(); }
+  if (name==='admin') loadAdminUsers();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+function daysUntil(d) {
+  if (!d) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((new Date(d)-now)/86400000);
+}
+function svcDue(last) {
+  if (!last) return null;
+  const d = new Date(last); d.setFullYear(d.getFullYear()+1);
+  return d.toISOString().split('T')[0];
+}
+function daysText(d) {
+  if (d===null) return '';
+  if (d<0) return `<span class="days-text">${Math.abs(d)}d ago</span>`;
+  return `<span class="days-text">${d}d</span>`;
+}
+function statusBadge(d) {
+  if (d===null) return `<span class="status-badge badge-unknown">Unknown</span>`;
+  if (d<0) return `<span class="status-badge badge-expired">Expired</span>`;
+  if (d<=30) return `<span class="status-badge badge-soon">Due soon</span>`;
+  return `<span class="status-badge badge-ok">OK</span>`;
+}
+
+// ── Vehicles ───────────────────────────────────────────────────────────────────
+async function loadVehicles() {
+  try {
+    const res = await fetch('/api/vehicles');
+    vehicles = await res.json();
+    renderVehicles();
+  } catch(e) {
+    document.getElementById('vehicle-cards').innerHTML = `<div class="loading-bar">Could not load vehicles: ${e.message}</div>`;
+  }
+}
+
+function renderVehicles() {
+  const grid = document.getElementById('vehicle-cards');
+  document.getElementById('vehicle-count').textContent = vehicles.length + ' vehicle' + (vehicles.length!==1?'s':'');
+  if (!vehicles.length) {
+    grid.innerHTML = `<div class="empty-state"><div style="font-size:40px;margin-bottom:1rem;opacity:0.3;">🚗</div><div>No vehicles yet — click + Add vehicle to get started</div></div>`;
+    return;
+  }
+  grid.innerHTML = vehicles.map(renderCard).join('');
+}
+
+function renderCard(v) {
+  const motD=daysUntil(v.mot_expiry), taxD=daysUntil(v.tax_expiry), insD=daysUntil(v.insurance_expiry);
+  const svcDate=svcDue(v.last_serviced), svcD=daysUntil(svcDate);
+  const desc=[v.colour?v.colour.charAt(0)+v.colour.slice(1).toLowerCase():'',v.make?v.make.charAt(0)+v.make.slice(1).toLowerCase():''].filter(Boolean).join(' ');
+  const fetched=v.dvla_fetched?new Date(v.dvla_fetched).toLocaleDateString('en-GB'):'Never';
+  return `<div class="vehicle-card">
+  <div class="vehicle-card-header">
+    <div>
+      ${desc?`<div style="font-size:12px;color:var(--text3);margin-bottom:4px;">${desc}</div>`:''}
+      <span class="vrm"><span class="vrm-text">${v.vrm}</span></span>
+      ${v.name?`<div class="vehicle-name">${v.name}</div>`:''}
+    </div>
+    <div class="card-actions">
+      <button class="btn-icon" onclick="openEditModal('${v.vrm}')" title="Edit">✎</button>
+      <button class="btn-icon" onclick="refreshDvla('${v.vrm}')" title="Refresh DVLA">↻</button>
+      <button class="btn-icon" onclick="deleteVehicle('${v.vrm}')" title="Remove" style="color:var(--red-text);">✕</button>
+    </div>
+  </div>
+  <div class="status-strips">
+    <div class="status-row"><span class="status-label">MOT</span><div style="display:flex;align-items:center;gap:6px;">${daysText(motD)}${statusBadge(motD)}</div></div>
+    ${v.mot_expiry?`<div style="font-size:11px;color:var(--text3);margin-top:-4px;">Expires ${formatDate(v.mot_expiry)}</div>`:''}
+    <div class="status-row"><span class="status-label">Tax</span><div style="display:flex;align-items:center;gap:6px;">${daysText(taxD)}${statusBadge(taxD)}</div></div>
+    ${v.tax_expiry?`<div style="font-size:11px;color:var(--text3);margin-top:-4px;">Due ${formatDate(v.tax_expiry)}</div>`:''}
+    <div class="status-row"><span class="status-label">Service</span><div style="display:flex;align-items:center;gap:6px;">${daysText(svcD)}${statusBadge(svcD)}</div></div>
+    ${v.last_serviced?`<div style="font-size:11px;color:var(--text3);margin-top:-4px;">Last ${formatDate(v.last_serviced)} — due ${formatDate(svcDate)}</div>`:`<div style="font-size:11px;color:var(--text3);margin-top:-4px;">No service date recorded</div>`}
+    <div class="status-row"><span class="status-label">Insurance</span><div style="display:flex;align-items:center;gap:6px;">${daysText(insD)}${statusBadge(insD)}</div></div>
+    ${v.insurance_expiry?`<div style="font-size:11px;color:var(--text3);margin-top:-4px;">Expires ${formatDate(v.insurance_expiry)}${v.insurer?' · '+v.insurer:''}</div>`:''}
+    ${v.v5c_date?`<div class="status-row" style="margin-top:4px;"><span class="status-label">V5C issued</span><span style="font-size:13px;color:var(--text2);">${formatDate(v.v5c_date)}</span></div>`:''}
+  </div>
+  ${v.dvla_error?`<div style="margin:0 1.25rem 0.5rem;font-size:11px;color:var(--red-text);background:var(--red-bg);border:0.5px solid var(--red-border);border-radius:4px;padding:4px 8px;">⚠ ${v.dvla_error}</div>`:''}
+  <div style="font-size:11px;color:var(--text3);padding:0 1.25rem 0.75rem;">DVLA updated: ${fetched}</div>
+</div>`;
+}
+
+// ── Add / Edit / Delete ────────────────────────────────────────────────────────
+function openAddModal() { document.getElementById('add-modal').style.display='flex'; setTimeout(()=>document.getElementById('add-vrm').focus(),50); }
+function closeAddModal() {
+  document.getElementById('add-modal').style.display='none';
+  document.getElementById('add-success').style.display='none';
+  document.getElementById('add-error').style.display='none';
+  ['add-vrm','add-name','add-insurer'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('add-insurance').value='';
+  document.getElementById('add-serviced').value='';
+}
+async function addVehicle() {
+  const vrm = document.getElementById('add-vrm').value.trim().toUpperCase().replace(/\s/g,'');
+  if (!vrm) { showMsg('add-error','VRM required'); return; }
+  const res = await fetch('/api/vehicles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vrm,name:document.getElementById('add-name').value.trim(),insurer:document.getElementById('add-insurer').value.trim(),insurance_expiry:document.getElementById('add-insurance').value||null,last_serviced:document.getElementById('add-serviced').value||null})});
+  const data = await res.json();
+  if (!res.ok) { showMsg('add-error',data.error); return; }
+  showMsg('add-success','Vehicle added!');
+  await loadVehicles();
+  setTimeout(()=>{ closeAddModal(); refreshDvla(vrm); }, 1200);
+}
+
+function openEditModal(vrm) {
+  const v = vehicles.find(x=>x.vrm===vrm);
+  if (!v) return;
+  document.getElementById('edit-vrm-orig').value = vrm;
+  document.getElementById('edit-name').value = v.name||'';
+  document.getElementById('edit-insurance').value = v.insurance_expiry||'';
+  document.getElementById('edit-insurer').value = v.insurer||'';
+  document.getElementById('edit-serviced').value = v.last_serviced||'';
+  document.getElementById('edit-modal').style.display='flex';
+}
+function closeEditModal() { document.getElementById('edit-modal').style.display='none'; }
+async function saveEdit() {
+  const vrm = document.getElementById('edit-vrm-orig').value;
+  const body = {name:document.getElementById('edit-name').value.trim(),insurance_expiry:document.getElementById('edit-insurance').value||null,insurer:document.getElementById('edit-insurer').value.trim(),last_serviced:document.getElementById('edit-serviced').value||null};
+  const res = await fetch(`/api/vehicles/${vrm}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if (res.ok) { closeEditModal(); await loadVehicles(); }
+}
+async function deleteVehicle(vrm) {
+  if (!confirm(`Remove ${vrm} from your garage?`)) return;
+  await fetch(`/api/vehicles/${vrm}`,{method:'DELETE'});
+  await loadVehicles();
+}
+
+// ── DVLA refresh ───────────────────────────────────────────────────────────────
+async function refreshDvla(vrm) {
+  const v = vehicles.find(x=>x.vrm===vrm);
+  if (v) { v._loading=true; renderVehicles(); }
+  try {
+    const res = await fetch('/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({registrationNumber:vrm})});
+    const data = await res.json();
+    if (data.errors || data.error) { await fetch(`/api/vehicles/${vrm}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({dvla_error:data.errors?.[0]?.detail||data.error||'Unknown error'})}); }
+    else {
+      const u={make:data.make,colour:data.colour,mot_expiry:data.motExpiryDate,tax_expiry:data.taxDueDate,dvla_fetched:new Date().toISOString(),dvla_error:null};
+      await fetch(`/api/vehicles/${vrm}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(u)});
+    }
+  } catch(e) {}
+  await loadVehicles();
+}
+
+async function refreshAllDvla() {
+  const btn = document.querySelector('button[onclick="refreshAllDvla()"]');
+  if(btn){btn.disabled=true;btn.textContent='Refreshing…';}
+  for (const v of vehicles) await refreshDvla(v.vrm);
+  if(btn){btn.disabled=false;btn.textContent='↻ Refresh DVLA';}
+}
+
+// ── MOT History tab ────────────────────────────────────────────────────────────
+function renderMotTab() {
+  const el = document.getElementById('mot-panels');
+  document.getElementById('mot-count').textContent = vehicles.length + ' vehicle' + (vehicles.length!==1?'s':'');
+  el.innerHTML = vehicles.map(v => `<div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <span class="vrm" style="font-size:16px;"><span class="vrm-text">${v.vrm}</span></span>
+        ${v.name?`<span style="font-size:13px;color:var(--text2);margin-left:10px;">${v.name}</span>`:''}
+      </div>
+      <button class="btn" onclick="loadMotHistory('${v.vrm}')">↻ Refresh</button>
+    </div>
+    <div id="mot-${v.vrm}" style="margin-top:1rem;">${renderMotTests(v)}</div>
+  </div>`).join('');
+}
+
+function renderMotTests(v) {
+  const tests = v.mot_history?.motTests || (Array.isArray(v.mot_history) ? (v.mot_history[0]?.motTests||[]) : []);
+  if (v.mot_history_error) return `<div style="color:var(--red-text);font-size:13px;">⚠ ${v.mot_history_error}</div>`;
+  if (!v.mot_history) return `<div style="color:var(--text3);font-size:13px;">Not loaded — click Refresh</div>`;
+  if (!tests.length) return `<div style="color:var(--text3);font-size:13px;">No MOT history found</div>`;
+  return tests.map((t,idx)=>{
+    const passed=t.testResult==='PASSED';
+    const date=t.completedDate?new Date(t.completedDate.replace(' ','T')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+    const defects=t.defects||t.rfrAndComments||[];
+    const fails=defects.filter(r=>['FAIL','MAJOR','DANGEROUS'].includes(r.type));
+    const advisories=defects.filter(r=>['ADVISORY','MINOR'].includes(r.type));
+    const hasItems=fails.length||advisories.length;
+    return `<details class="mot-test" ${idx===0&&hasItems?'open':''}>
+      <summary class="mot-test-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="status-badge ${passed?'badge-pass':'badge-fail'}">${passed?'Pass':'Fail'}</span>
+          <span style="font-size:13px;font-weight:500;">${date}</span>
+          ${t.odometerValue?`<span style="font-size:11px;color:var(--text3);">${Number(t.odometerValue).toLocaleString()} ${t.odometerUnit||'mi'}</span>`:''}
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          ${fails.length?`<span class="mot-tag fail">${fails.length} fail${fails.length>1?'s':''}</span>`:''}
+          ${advisories.length?`<span class="mot-tag advisory">${advisories.length} advisor${advisories.length>1?'ies':'y'}</span>`:''}
+          ${hasItems?`<span style="font-size:9px;color:var(--text3);margin-left:2px;">▾</span>`:''}
+        </div>
+      </summary>
+      ${hasItems?`<div style="padding:6px 8px 8px;">
+        ${fails.map(f=>`<div class="mot-item fail-item"><span class="mot-item-label">${f.type}</span>${f.text}</div>`).join('')}
+        ${advisories.map(a=>`<div class="mot-item advisory"><span class="mot-item-label">Advisory</span>${a.text}</div>`).join('')}
+      </div>`:''}
+      ${t.expiryDate?`<div style="font-size:11px;color:var(--text3);padding:2px 12px 8px;">Expiry: ${formatDate(t.expiryDate)}</div>`:''}
+    </details>`;
+  }).join('');
+}
+
+async function loadMotHistory(vrm) {
+  document.getElementById('mot-'+vrm).innerHTML = '<div style="color:var(--text3);font-size:13px;">Loading…</div>';
+  try {
+    const res = await fetch('/mot-history/'+vrm);
+    const data = await res.json();
+    const v = vehicles.find(x=>x.vrm===vrm);
+    if (v) {
+      v.mot_history = data;
+      v.mot_history_error = null;
+      await fetch(`/api/vehicles/${vrm}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({mot_history:data,mot_history_fetched:new Date().toISOString(),mot_history_error:null})});
+      document.getElementById('mot-'+vrm).innerHTML = renderMotTests(v);
+    }
+  } catch(e) {
+    const v=vehicles.find(x=>x.vrm===vrm);
+    if(v){v.mot_history_error='Error loading';document.getElementById('mot-'+vrm).innerHTML=renderMotTests(v);}
+  }
+}
+
+async function autoLoadMot() {
+  for (const v of vehicles) {
+    if (!v.mot_history) await loadMotHistory(v.vrm);
+  }
+}
+async function refreshAllMot() {
+  for (const v of vehicles) await loadMotHistory(v.vrm);
+}
+
+// ── Lookup tab ─────────────────────────────────────────────────────────────────
+async function doLookup() {
+  const vrm = document.getElementById('lookup-vrm').value.trim().toUpperCase().replace(/\s/g,'');
+  if (!vrm) return;
+  document.getElementById('lookup-result').style.display='none';
+  document.getElementById('lookup-loading').style.display='block';
+  document.getElementById('lookup-error').style.display='none';
+  document.getElementById('lookup-btn').disabled=true;
+  try {
+    const [dvlaRes, motRes] = await Promise.all([
+      fetch('/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({registrationNumber:vrm})}),
+      fetch('/mot-history/'+vrm)
+    ]);
+    const dvla = await dvlaRes.json();
+    if (dvla.errors||dvla.error) throw new Error(dvla.errors?.[0]?.detail||dvla.error||'Vehicle not found');
+    const motData = await motRes.json();
+    const tests = (Array.isArray(motData)?motData[0]:motData)?.motTests||[];
+    const motD=dvla.motExpiryDate?Math.ceil((new Date(dvla.motExpiryDate)-new Date())/86400000):null;
+    const taxD=dvla.taxDueDate?Math.ceil((new Date(dvla.taxDueDate)-new Date())/86400000):null;
+    const colour=dvla.colour?dvla.colour.charAt(0)+dvla.colour.slice(1).toLowerCase():'';
+    const make=dvla.make?dvla.make.charAt(0)+dvla.make.slice(1).toLowerCase():'';
+    const motBadge=dvla.motStatus==='Valid'?'<span class="status-badge badge-ok">Valid</span>':'<span class="status-badge badge-expired">'+(dvla.motStatus||'Unknown')+'</span>';
+    const taxBadge=dvla.taxStatus==='Taxed'?'<span class="status-badge badge-ok">Taxed</span>':'<span class="status-badge badge-expired">'+(dvla.taxStatus||'Unknown')+'</span>';
+    const alreadyIn = vehicles.some(x=>x.vrm===vrm);
+    document.getElementById('lookup-dvla-card').innerHTML=`
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:5px;">${colour} ${make} · ${dvla.yearOfManufacture||''} · ${dvla.fuelType||''}</div>
+        <span class="vrm" style="font-size:18px;"><span class="vrm-text">${vrm}</span></span>
+      </div>
+      <div class="status-strips" style="padding:0;">
+        <div class="status-row"><span class="status-label">MOT</span><div style="display:flex;align-items:center;gap:6px;">${motD!==null?'<span class="days-text">'+motD+'d</span>':''}${motBadge}</div></div>
+        ${dvla.motExpiryDate?'<div style="font-size:11px;color:var(--text3);">Expires '+formatDate(dvla.motExpiryDate)+'</div>':''}
+        <div class="status-row" style="margin-top:8px;"><span class="status-label">Tax</span><div style="display:flex;align-items:center;gap:6px;">${taxD!==null?'<span class="days-text">'+taxD+'d</span>':''}${taxBadge}</div></div>
+        ${dvla.taxDueDate?'<div style="font-size:11px;color:var(--text3);">Due '+formatDate(dvla.taxDueDate)+'</div>':''}
+        ${dvla.dateOfLastV5CIssued?'<div class="status-row" style="margin-top:8px;"><span class="status-label">V5C issued</span><span style="font-size:13px;color:var(--text2);">'+formatDate(dvla.dateOfLastV5CIssued)+'</span></div>':''}
+      </div>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:0.5px solid var(--border);">
+        ${alreadyIn
+          ? '<span style="font-size:13px;color:var(--green-text);background:var(--green-bg);border:0.5px solid var(--green-border);border-radius:6px;padding:5px 12px;">✓ Already in My Garage</span>'
+          : `<button class="btn btn-primary" onclick="addFromLookup('${vrm}')">+ Add to My Garage</button>`}
+      </div>`;
+    document.getElementById('lookup-mot-card').innerHTML = `<h3 style="font-size:14px;font-weight:600;margin-bottom:1rem;">MOT History — ${tests.length} test${tests.length!==1?'s':''}</h3>`+
+      (tests.length?tests.map((t,idx)=>{
+        const passed=t.testResult==='PASSED';
+        const date=t.completedDate?new Date(t.completedDate.replace(' ','T')).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+        const defects=t.defects||t.rfrAndComments||[];
+        const fails=defects.filter(r=>['FAIL','MAJOR','DANGEROUS'].includes(r.type));
+        const advisories=defects.filter(r=>['ADVISORY','MINOR'].includes(r.type));
+        const hasItems=fails.length||advisories.length;
+        return `<details class="mot-test" style="margin-bottom:6px;" ${idx===0&&hasItems?'open':''}>
+          <summary class="mot-test-header" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:${hasItems?'pointer':'default'};">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="status-badge ${passed?'badge-pass':'badge-fail'}">${passed?'Pass':'Fail'}</span>
+              <span style="font-size:13px;font-weight:500;">${date}</span>
+              ${t.odometerValue?`<span style="font-size:11px;color:var(--text3);">${Number(t.odometerValue).toLocaleString()} ${t.odometerUnit||'mi'}</span>`:''}
+            </div>
+            <div style="display:flex;gap:4px;">
+              ${fails.length?`<span class="mot-tag fail">${fails.length} fail${fails.length>1?'s':''}</span>`:''}
+              ${advisories.length?`<span class="mot-tag advisory">${advisories.length} advisor${advisories.length>1?'ies':'y'}</span>`:''}
+              ${hasItems?`<span style="font-size:9px;color:var(--text3);">▾</span>`:''}
+            </div>
+          </summary>
+          ${hasItems?`<div style="padding:6px 8px 8px;">
+            ${fails.map(f=>`<div class="mot-item fail-item"><span class="mot-item-label">${f.type}</span>${f.text}</div>`).join('')}
+            ${advisories.map(a=>`<div class="mot-item advisory"><span class="mot-item-label">Advisory</span>${a.text}</div>`).join('')}
+          </div>`:''}
+          ${t.expiryDate?`<div style="font-size:11px;color:var(--text3);padding:2px 12px 8px;">Expiry: ${formatDate(t.expiryDate)}</div>`:''}
+        </details>`;
+      }).join(''):'<div style="color:var(--text3);font-size:13px;">No MOT history found</div>');
+    document.getElementById('lookup-result').style.display='block';
+  } catch(e) {
+    const el=document.getElementById('lookup-error'); el.textContent=e.message; el.style.display='block';
+  } finally {
+    document.getElementById('lookup-loading').style.display='none';
+    document.getElementById('lookup-btn').disabled=false;
+  }
+}
+
+async function addFromLookup(vrm) {
+  const btn = event.target; btn.disabled=true; btn.textContent='Adding…';
+  const res = await fetch('/api/vehicles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vrm})});
+  if (res.ok) {
+    await loadVehicles();
+    btn.parentElement.innerHTML='<span style="font-size:13px;color:var(--green-text);background:var(--green-bg);border:0.5px solid var(--green-border);border-radius:6px;padding:5px 12px;">✓ Added to My Garage</span>';
+    refreshDvla(vrm);
+  } else { btn.disabled=false; btn.textContent='+ Add to My Garage'; }
+}
+
+// ── Account ────────────────────────────────────────────────────────────────────
+async function saveProfile() {
+  const name=document.getElementById('acc-name').value.trim();
+  const notify_email=document.getElementById('acc-notify').value.trim();
+  const res=await fetch('/api/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,notify_email})});
+  if(res.ok){showMsg('profile-success','Saved!');currentUser.name=name;document.getElementById('user-badge').textContent=name||currentUser.email;}
+  else{const d=await res.json();showMsg('profile-error',d.error);}
+}
+async function changePassword() {
+  const current=document.getElementById('pw-current').value;
+  const nw=document.getElementById('pw-new').value;
+  const confirm=document.getElementById('pw-confirm').value;
+  if(nw!==confirm){showMsg('pw-error','Passwords do not match');return;}
+  if(nw.length<8){showMsg('pw-error','Password must be at least 8 characters');return;}
+  const res=await fetch('/api/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:current,new_password:nw})});
+  if(res.ok){showMsg('pw-success','Password updated!');['pw-current','pw-new','pw-confirm'].forEach(id=>document.getElementById(id).value='');}
+  else{const d=await res.json();showMsg('pw-error',d.error);}
+}
+async function sendTestEmail() {
+  const res=await fetch('/test-email');
+  const text=await res.text();
+  const el=document.getElementById('test-success');el.textContent=text;el.style.display='block';
+  setTimeout(()=>el.style.display='none',5000);
+}
+
+// ── Admin ──────────────────────────────────────────────────────────────────────
+async function loadAdminUsers() {
+  const res=await fetch('/api/admin/users');
+  const users=await res.json();
+  document.getElementById('user-list').innerHTML=users.map(u=>`
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:1rem 1.25rem;">
+      <div>
+        <div style="font-weight:500;">${u.name||'(no name)'} ${u.is_admin?'<span style="font-size:11px;background:var(--amber-bg);color:var(--amber-text);border:0.5px solid var(--amber-border);border-radius:4px;padding:1px 6px;">Admin</span>':''}</div>
+        <div style="font-size:13px;color:var(--text2);">${u.email}</div>
+        <div style="font-size:12px;color:var(--text3);">Notifications: ${u.notify_email||'not set'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn" style="font-size:13px;padding:6px 12px;" onclick="resetPassword('${u.id}','${u.email}')">Reset password</button>
+        ${!u.is_admin?`<button class="btn btn-danger" style="font-size:13px;padding:6px 12px;" onclick="deleteUser('${u.id}','${u.email}')">Delete</button>`:''}
+      </div>
+    </div>`).join('');
+}
+function openNewUserModal(){document.getElementById('new-user-modal').style.display='flex';setTimeout(()=>document.getElementById('nu-name').focus(),50);}
+function closeNewUserModal(){document.getElementById('new-user-modal').style.display='none';['nu-name','nu-email','nu-password','nu-notify'].forEach(id=>document.getElementById(id).value='');document.getElementById('nu-success').style.display='none';document.getElementById('nu-error').style.display='none';}
+async function createUser() {
+  const name=document.getElementById('nu-name').value.trim();
+  const email=document.getElementById('nu-email').value.trim();
+  const password=document.getElementById('nu-password').value;
+  const notify_email=document.getElementById('nu-notify').value.trim()||email;
+  if(!email||!password){showMsg('nu-error','Email and password required');return;}
+  const res=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password,notify_email})});
+  const data=await res.json();
+  if(res.ok){showMsg('nu-success',`Account created for ${data.email}`);loadAdminUsers();}
+  else{showMsg('nu-error',data.error);}
+}
+async function deleteUser(id,email) {
+  if(!confirm(`Delete account for ${email}? This will remove all their vehicles too.`))return;
+  await fetch(`/api/admin/users/${id}`,{method:'DELETE'});
+  loadAdminUsers();
+}
+async function resetPassword(id,email) {
+  const pw=prompt(`New password for ${email}:`);
+  if(!pw||pw.length<8){alert('Password must be at least 8 characters');return;}
+  const res=await fetch(`/api/admin/users/${id}/reset-password`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+  if(res.ok)alert(`Password reset for ${email}`);
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────────
+function showMsg(id,msg){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000);}
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+checkAuth();
+</script>
+</body>
+</html>
